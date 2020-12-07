@@ -1,0 +1,18 @@
+#!/bin/bash
+DIRECTORY="$(cat ./Config/options.txt)"
+PID=$(pgrep xfce4-session)
+export DBUS_SESSION_BUS_ADDRESS=$(grep -z DBUS_SESSION_BUS_ADDRESS /proc/$PID/environ|cut -d= -f2-)
+IP="$(curl https://ipinfo.io/ip)"
+LOCATION="$(curl https://ipvigilante.com/$IP | jq '.data')"
+LAT="$(echo $LOCATION | jq '.latitude' | tr -d '"' | grep -E '(-?)[0-9]+\.[0-9]+')"
+LON="$(echo $LOCATION | jq '.longitude' | tr -d '"' | grep -E '(-?)[0-9]+\.[0-9]+')"
+WEATHER="curl 'http://api.openweathermap.org/data/2.5/weather?lat=$LAT&lon=$LON&appid=f76db66a9fdbcb8a674b4f5e44145bbb' | jq '.weather | .[0] | .main'"
+CHOICE=$(eval "$WEATHER")
+case $CHOICE in
+'"Clear"') WALLPAPER="clear.jpg" ;;
+'"Clouds"') WALLPAPER="clouds.jpg" ;;
+'"Rain"') WALLPAPER="rain.jpg" ;;
+'"Snow"') WALLPAPER="snow.jpg" ;;
+'"Extreme"') WALLPAPER="extreme.jpg" ;;
+esac
+xfconf-query --channel xfce4-desktop --property /backdrop/screen0/monitorVirtual1/workspace0/last-image --set ${DIRECTORY}Wallpapers/Active/$WALLPAPER

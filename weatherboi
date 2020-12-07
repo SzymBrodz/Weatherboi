@@ -1,0 +1,123 @@
+#!/bin/bash
+#Author           : Szymon Brodzinski 180017
+#Created On       : 04.05.2020
+#Last Modified By : Szymon Brodzinski 180017
+#Last Modified On : 20.05.2020
+#Version          : 4.00
+#                 :
+#Description      : WeatherBoi is a highly customizable wallpaper program. It changes your wallpaper based on the
+#		  : current weather in your area
+#                 :
+#Setup            : Configure the DIRECTORY variable below to match the location of WeatherBoi on your computer
+#                 : like this "/home/$(whoami)/WeatherBoi/" for example
+#No License       :
+
+DIRECTORY="/home/$(whoami)/Project/"
+
+while getopts hvr OPT ; do
+case $OPT in
+#TODO
+h) echo "Help"
+exit ;;
+v) echo "Weatherboi Version 4.00"
+exit ;; 
+r) ./weatherboi-cronjob
+exit ;;
+*) echo "Uknown option" ;;
+esac
+done
+
+echo "$DIRECTORY">./Config/options.txt
+TIME=5
+
+deleteCronjob(){
+crontab -l | grep -vE ".*weatherboi-cronjob" | crontab -
+}
+
+addCronjob(){
+if [[ $(crontab -l | grep -Ev "^(#|$)" | grep -Fu "*/$TIME * * * * ${DIRECTORY}weatherboi-cronjob"; echo $?) == 1 ]]
+then
+	deleteCronjob
+	(crontab -l 2>/dev/null; echo "*/$TIME * * * * ${DIRECTORY}weatherboi-cronjob") | crontab -
+fi
+}
+
+
+
+while [ 0 ] ; do
+CURRENT="$(cat ./Config/current.txt)"
+	MENU="$(zenity --list --radiolist --title="WeatherBoi" --text="Welcome to WeatherBoi, choose one of our themes or create your own and we will change your wallpaper automatically according to the weather outside! Current Theme ($CURRENT) " --column="Select" --column="Theme" --column="Description" --height=500 --width=700 \
+		FALSE "Default" "HD wallpaper to represent the mood of current weather!"\
+		FALSE "Heroes3" "Something for fans of this wonderful game!"\
+		FALSE "Art" "Breathtaking paintings to add charm to your desktop"\
+		FALSE "User" "Define your own theme by choosing a wallpaper for each weather!"\
+		FALSE "Frequency" "Select how often do you want to have your wallpaper updated"\
+		FALSE "None" "Turn WeatherbBi off")"
+	RC=$?
+	case $RC in
+	"0")
+		case $MENU in
+		"Default") echo "Default">./Config/current.txt
+			cp ./Wallpapers/Default/* ./Wallpapers/Active/
+			./weatherboi-cronjob
+			addCronjob
+		;;		
+		"Heroes3") echo "Heroes3">./Config/current.txt
+			cp ./Wallpapers/Heroes3/* ./Wallpapers/Active/
+			./weatherboi-cronjob
+			addCronjob
+		;;
+		"Art") echo "Art">./Config/current.txt
+			cp ./Wallpapers/Art/* ./Wallpapers/Active/
+			./weatherboi-cronjob
+			addCronjob
+		;;
+		"User") echo "User">./Config/current.txt
+			while [ 0 ] ; do
+			ODP="$(zenity --list --radiolist --title="WeatherBoi"\
+			--text="Choose a weather and then select a picture which you thinks matches it!"\
+			--column="Select" --column="Weather" --column="WeatherBoi"\
+			--height=500 --width=700\
+			FALSE "Clear" "$CLEAR"\
+			FALSE "Clouds" "$CLOUDS"\
+			FALSE "Rain" "$RAIN"\
+			FALSE "Snow" "$SNOW"\
+			FALSE "Extreme" "$EXTREME")"
+			OK=$?
+			case $OK in
+			"0")
+				case $ODP in
+				"Clear") CLEAR="$(zenity --file-selection --title='Wybierz Tapete' --file-filter=*.jpg --filename '${HOME}/')"
+					cp "$CLEAR" ./Wallpapers/User/clear.jpg ;;
+				"Clouds") CLOUDS="$(zenity --file-selection --title='Wybierz Tapete' --file-filter=*.jpg --filename '${HOME}/')"
+					cp "$CLOUDS" ./Wallpapers/User/clouds.jpg ;;
+				"Rain") RAIN="$(zenity --file-selection --title='Wybierz Tapete' --file-filter=*.jpg --filename '${HOME}/')"
+					cp "$RAIN" ./Wallpapers/User/rain.jpg ;;
+				"Snow") SNOW="$(zenity --file-selection --title='Wybierz Tapete' --file-filter=*.jpg --filename '${HOME}/')"
+					cp "$SNOW" ./Wallpapers/User/snow.jpg ;;
+				"Extreme") EXTREME="$(zenity --file-selection --title='Wybierz Tapete' --file-filter=*.jpg --filename '${HOME}/')"
+					cp "$EXTREME" ./Wallpapers/User/extreme.jpg ;;
+				esac
+			;;
+			"1")
+				cp ./Wallpapers/User/* ./Wallpapers/Active/
+				./weatherboi-cronjob
+				addCronjob
+				break
+			;;
+			esac
+			done
+		;;
+		"Frequency") FREQ="$(zenity --entry --text="Set refresh rate in minutes (default is every 5 minutes)")"
+				if [[ $? == 0 ]]
+				then
+				TIME="$FREQ"
+				fi
+		;;
+		"None") deleteCronjob
+		;;
+		esac
+	;;
+	"1") break ;;
+	esac
+done
